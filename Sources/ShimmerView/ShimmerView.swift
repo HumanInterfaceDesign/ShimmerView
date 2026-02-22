@@ -121,11 +121,10 @@ public final class ShimmerView: UIView {
 
         layoutIfNeeded()
 
-        let currentShimmering = maskLayer.animation(forKey: ShimmerAnimationFactory.slideKey) != nil
-
-        if isShimmering == currentShimmering { return }
-
         if isShimmering {
+            // Cancel any pending end fade so its completion doesn't clear the mask
+            maskLayer.fadeLayer.removeAnimation(forKey: ShimmerAnimationFactory.endFadeKey)
+
             // Start shimmer
             contentLayer.mask = maskLayer
 
@@ -138,9 +137,7 @@ public final class ShimmerView: UIView {
             animation.fillMode = .forwards
             animation.isRemovedOnCompletion = false
 
-            if shimmerBeginTime == .greatestFiniteMagnitude {
-                shimmerBeginTime = CACurrentMediaTime() + config.beginFadeDuration
-            }
+            shimmerBeginTime = CACurrentMediaTime() + config.beginFadeDuration
             animation.beginTime = shimmerBeginTime
 
             maskLayer.add(animation, forKey: ShimmerAnimationFactory.slideKey)
@@ -157,6 +154,14 @@ public final class ShimmerView: UIView {
             maskLayer.fadeLayer.add(fade, forKey: ShimmerAnimationFactory.fadeKey)
             shimmerFadeTime = CFAbsoluteTimeGetCurrent()
         } else {
+            // Only stop if shimmer is actually running
+            let hasSlideAnimation = maskLayer.animation(forKey: ShimmerAnimationFactory.slideKey) != nil
+            guard hasSlideAnimation else { return }
+
+            // Remove slide animation immediately so subsequent config
+            // changes don't re-enter the stop branch
+            maskLayer.removeAnimation(forKey: ShimmerAnimationFactory.slideKey)
+
             // Stop shimmer
             let endFadeDuration = config.endFadeDuration
 
