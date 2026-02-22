@@ -213,9 +213,9 @@ public final class ShimmerView: UIView {
         let unmaskedColor = UIColor(white: 1.0, alpha: config.animationOpacity)
 
         maskLayer.colors = [
-            maskedColor.cgColor,
             unmaskedColor.cgColor,
             maskedColor.cgColor,
+            unmaskedColor.cgColor,
         ]
     }
 
