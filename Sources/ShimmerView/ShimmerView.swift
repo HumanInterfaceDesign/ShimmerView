@@ -151,7 +151,7 @@ public final class ShimmerView: UIView {
             // Fade in
             let fade = ShimmerAnimationFactory.fadeAnimation(
                 layer: maskLayer.fadeLayer,
-                opacity: 1.0,
+                opacity: 0.0,
                 duration: config.beginFadeDuration
             )
             maskLayer.fadeLayer.add(fade, forKey: ShimmerAnimationFactory.fadeKey)
@@ -172,11 +172,11 @@ public final class ShimmerView: UIView {
             shimmerFadeTime = nil
             shimmerBeginTime = .greatestFiniteMagnitude
 
-            let actualEndFadeDuration = CFTimeInterval(1.0 - minOpacity) * endFadeDuration
+            let actualEndFadeDuration = CFTimeInterval(min(1.0, minOpacity)) * endFadeDuration
 
             let fade = ShimmerAnimationFactory.fadeAnimation(
                 layer: maskLayer.fadeLayer,
-                opacity: 0.0,
+                opacity: 1.0,
                 duration: actualEndFadeDuration
             )
             fade.delegate = self
