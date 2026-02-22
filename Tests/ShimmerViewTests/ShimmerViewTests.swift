@@ -49,17 +49,12 @@ import UIKit
         #expect(view.contentView.layer.mask != nil)
     }
 
-    @Test func stoppingShimmerAddsFadeOutAnimation() {
+    @Test func stoppingShimmerClearsMask() {
         let view = ShimmerView(frame: CGRect(x: 0, y: 0, width: 200, height: 40))
         view.isShimmering = true
+        #expect(view.contentView.layer.mask != nil)
         view.isShimmering = false
-        // Stopping shimmer should add an end-fade animation to the mask's fade layer
-        let mask = view.contentView.layer.mask
-        #expect(mask != nil)
-        let hasFadeEnd = (mask as? ShimmerMaskLayer)?.fadeLayer.animation(
-            forKey: ShimmerAnimationFactory.endFadeKey
-        ) != nil
-        #expect(hasFadeEnd)
+        #expect(view.contentView.layer.mask == nil)
     }
 
     @Test func conveniencePropertiesForwardToConfiguration() {

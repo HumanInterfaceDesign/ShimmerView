@@ -1,0 +1,35 @@
+name: ShimmerViewExample
+options:
+  bundleIdPrefix: com.shimmerviewexample
+  deploymentTarget:
+    iOS: "15.0"
+  xcodeVersion: "16.0"
+
+packages:
+  ShimmerView:
+    path: .
+
+targets:
+  Example:
+    type: application
+    platform: iOS
+    sources:
+      - path: Example
+        excludes:
+          - "*.plist"
+    info:
+      path: Example/Info.plist
+      properties:
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        UILaunchStoryboardName: LaunchScreen
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shimmerviewexample.Example
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: ShimmerView

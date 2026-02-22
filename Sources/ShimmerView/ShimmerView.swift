@@ -12,7 +12,11 @@ public final class ShimmerView: UIView {
     public var isShimmering: Bool = false {
         didSet {
             guard oldValue != isShimmering else { return }
-            updateShimmering()
+            if isShimmering {
+                startShimmer()
+            } else {
+                stopShimmer()
+            }
         }
     }
 
@@ -20,7 +24,9 @@ public final class ShimmerView: UIView {
     public var configuration: ShimmerConfiguration = .default {
         didSet {
             guard oldValue != configuration else { return }
-            updateShimmering()
+            if isShimmering {
+                startShimmer()
+            }
         }
     }
 
@@ -68,9 +74,8 @@ public final class ShimmerView: UIView {
 
     // MARK: - Private state
 
-    private var maskLayer: ShimmerMaskLayer?
-    private var shimmerBeginTime: CFTimeInterval = .greatestFiniteMagnitude
-    private var shimmerFadeTime: CFTimeInterval?
+    private var shimmerLayer: CAGradientLayer?
+    private var lastContentSize: CGSize = .zero
 
     // MARK: - Initialization
 
@@ -95,191 +100,97 @@ public final class ShimmerView: UIView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         contentView.frame = bounds
-        if maskLayer != nil {
-            updateMaskLayout()
+        if isShimmering {
+            let newSize = contentView.bounds.size
+            if shimmerLayer == nil || newSize != lastContentSize {
+                lastContentSize = newSize
+                startShimmer()
+            }
         }
     }
 
-    // MARK: - Shimmer orchestration
+    // MARK: - Shimmer
 
-    private func updateShimmering() {
-        createMaskIfNeeded()
-
-        guard let maskLayer else {
-            return
-        }
-
-        let isShimmering = self.isShimmering
-        let config = self.configuration
-
-        let contentLayer = contentView.layer
-        let maskBounds = contentLayer.bounds
-        let isHorizontal = (config.direction == .right || config.direction == .left)
-        let contentLength = isHorizontal ? maskBounds.width : maskBounds.height
-
-        guard contentLength > 0 else { return }
-
+    private func startShimmer() {
+        stopShimmer()
         layoutIfNeeded()
 
-        if isShimmering {
-            // Cancel any pending end fade so its completion doesn't clear the mask
-            maskLayer.fadeLayer.removeAnimation(forKey: ShimmerAnimationFactory.endFadeKey)
-
-            // Start shimmer
-            contentLayer.mask = maskLayer
-
-            let duration = CFTimeInterval(contentLength / config.speed) + config.pauseDuration
-            let animation = ShimmerAnimationFactory.slideAnimation(
-                duration: duration,
-                direction: config.direction
-            )
-
-            animation.fillMode = .forwards
-            animation.isRemovedOnCompletion = false
-
-            shimmerBeginTime = CACurrentMediaTime() + config.beginFadeDuration
-            animation.beginTime = shimmerBeginTime
-
-            maskLayer.add(animation, forKey: ShimmerAnimationFactory.slideKey)
-
-            updateMaskColors()
-            updateMaskLayout()
-
-            // Fade in
-            let fade = ShimmerAnimationFactory.fadeAnimation(
-                layer: maskLayer.fadeLayer,
-                opacity: 0.0,
-                duration: config.beginFadeDuration
-            )
-            maskLayer.fadeLayer.add(fade, forKey: ShimmerAnimationFactory.fadeKey)
-            shimmerFadeTime = CFAbsoluteTimeGetCurrent()
-        } else {
-            // Only stop if shimmer is actually running
-            let hasSlideAnimation = maskLayer.animation(forKey: ShimmerAnimationFactory.slideKey) != nil
-            guard hasSlideAnimation else { return }
-
-            // Remove slide animation immediately so subsequent config
-            // changes don't re-enter the stop branch
-            maskLayer.removeAnimation(forKey: ShimmerAnimationFactory.slideKey)
-
-            // Stop shimmer
-            let endFadeDuration = config.endFadeDuration
-
-            let now = CFAbsoluteTimeGetCurrent()
-            let minOpacity: CGFloat
-            if let fadeTime = shimmerFadeTime {
-                let elapsed = now - fadeTime
-                minOpacity = max(0, CGFloat(elapsed / max(0.001, config.beginFadeDuration)))
-            } else {
-                minOpacity = 1.0
-            }
-
-            shimmerFadeTime = nil
-            shimmerBeginTime = .greatestFiniteMagnitude
-
-            let actualEndFadeDuration = CFTimeInterval(min(1.0, minOpacity)) * endFadeDuration
-
-            let fade = ShimmerAnimationFactory.fadeAnimation(
-                layer: maskLayer.fadeLayer,
-                opacity: 1.0,
-                duration: actualEndFadeDuration
-            )
-            fade.delegate = self
-            maskLayer.fadeLayer.add(fade, forKey: ShimmerAnimationFactory.endFadeKey)
-        }
-    }
-
-    private func createMaskIfNeeded() {
-        guard isShimmering, maskLayer == nil else { return }
-        let mask = ShimmerMaskLayer()
-        maskLayer = mask
-        contentView.layer.mask = mask
-    }
-
-    private func clearMask() {
-        if let mask = maskLayer {
-            mask.removeAllAnimations()
-            mask.fadeLayer.removeAllAnimations()
-            contentView.layer.mask = nil
-        }
-        maskLayer = nil
-    }
-
-    private func updateMaskColors() {
-        guard let maskLayer else { return }
-
         let config = configuration
-        let maskedColor = UIColor(white: 1.0, alpha: config.baseOpacity)
-        let unmaskedColor = UIColor(white: 1.0, alpha: config.animationOpacity)
-
-        maskLayer.colors = [
-            unmaskedColor.cgColor,
-            maskedColor.cgColor,
-            unmaskedColor.cgColor,
-        ]
-    }
-
-    private func updateMaskLayout() {
-        guard let maskLayer else { return }
-
-        let config = configuration
-        let contentLayer = contentView.layer
-        let contentBounds = contentLayer.bounds
-
-        let isHorizontal = (config.direction == .right || config.direction == .left)
+        let contentBounds = contentView.bounds
+        let isHorizontal = config.direction == .right || config.direction == .left
         let contentLength = isHorizontal ? contentBounds.width : contentBounds.height
 
         guard contentLength > 0 else { return }
 
-        let highlightLength = contentLength * config.highlightLength
-        let extraDistance = contentLength + config.speed * CGFloat(config.pauseDuration)
-        let fullShimmerLength = highlightLength * 3.0 + extraDistance
-        let travelDistance = highlightLength * 2.0 + extraDistance
+        let gradient = CAGradientLayer()
 
-        let highlightOutsideLength = (1.0 - config.highlightLength) / 2.0
-        let startLocation = NSNumber(value: Float(highlightOutsideLength))
-        let endLocation = NSNumber(value: Float(1.0 - highlightOutsideLength))
-        maskLayer.locations = [startLocation, NSNumber(value: 0.5), endLocation]
+        // Colors: dim → bright → dim (highlight sweeps through)
+        let dimColor = UIColor(white: 1, alpha: config.animationOpacity).cgColor
+        let brightColor = UIColor(white: 1, alpha: config.baseOpacity).cgColor
+        gradient.colors = [dimColor, brightColor, dimColor]
 
-        let maskWidth = isHorizontal ? fullShimmerLength : contentBounds.width
-        let maskHeight = isHorizontal ? contentBounds.height : fullShimmerLength
+        // Locations control highlight band sharpness
+        let outside = (1.0 - config.highlightLength) / 2.0
+        gradient.locations = [
+            NSNumber(value: Float(outside)),
+            NSNumber(value: 0.5),
+            NSNumber(value: Float(1.0 - outside)),
+        ]
 
-        maskLayer.bounds = CGRect(x: 0, y: 0, width: maskWidth, height: maskHeight)
-        maskLayer.position = CGPoint(x: contentBounds.midX, y: contentBounds.midY)
-
-        let startX: CGFloat = isHorizontal ? 0 : 0.5
-        let startY: CGFloat = isHorizontal ? 0.5 : 0
-        let endX: CGFloat = isHorizontal ? 1 : 0.5
-        let endY: CGFloat = isHorizontal ? 0.5 : 1
-
-        maskLayer.startPoint = CGPoint(x: startX - 0.0001, y: startY - 0.0001)
-        maskLayer.endPoint = CGPoint(x: endX + 0.0001, y: endY + 0.0001)
-
-        let offset: CGFloat = isHorizontal ? -travelDistance : 0
-        let offsetY: CGFloat = isHorizontal ? 0 : -travelDistance
-        maskLayer.anchorPoint = .zero
-        maskLayer.position = CGPoint(x: offset, y: offsetY)
-
-        if let slide = maskLayer.animation(forKey: ShimmerAnimationFactory.slideKey) {
-            let duration = CFTimeInterval(travelDistance / config.speed) + config.pauseDuration
-            let repeated = ShimmerAnimationFactory.slideRepeat(
-                from: slide,
-                duration: duration,
-                direction: config.direction
-            )
-            maskLayer.add(repeated, forKey: ShimmerAnimationFactory.slideKey)
+        // Gradient direction
+        if isHorizontal {
+            gradient.startPoint = CGPoint(x: 0, y: 0.5)
+            gradient.endPoint = CGPoint(x: 1, y: 0.5)
+        } else {
+            gradient.startPoint = CGPoint(x: 0.5, y: 0)
+            gradient.endPoint = CGPoint(x: 0.5, y: 1)
         }
+
+        // The gradient must always cover the content with dim areas while
+        // the highlight slides through.
+        // Layout: [dim pad ≥ contentLength | highlight | dim pad ≥ contentLength]
+        let highlightSize = contentLength * config.highlightLength
+        let totalLength = contentLength * 2 + highlightSize
+
+        let width = isHorizontal ? totalLength : contentBounds.width
+        let height = isHorizontal ? contentBounds.height : totalLength
+        gradient.frame = CGRect(x: 0, y: 0, width: width, height: height)
+        gradient.anchorPoint = .zero
+
+        // Position so the highlight starts just off-screen
+        let forward = config.direction == .right || config.direction == .down
+        let offset = -(contentLength + highlightSize)
+        if isHorizontal {
+            gradient.position = CGPoint(x: forward ? offset : 0, y: 0)
+        } else {
+            gradient.position = CGPoint(x: 0, y: forward ? offset : 0)
+        }
+
+        contentView.layer.mask = gradient
+        shimmerLayer = gradient
+        lastContentSize = contentBounds.size
+
+        // Additive slide animation (inspired by Telegram's shimmer)
+        let travelDistance = contentLength + highlightSize
+        let keyPath = isHorizontal ? "position.x" : "position.y"
+
+        let anim = CABasicAnimation(keyPath: keyPath)
+        anim.isAdditive = true
+        anim.fromValue = 0
+        anim.toValue = forward ? travelDistance : -travelDistance
+        anim.duration = CFTimeInterval(travelDistance / config.speed) + config.pauseDuration
+        anim.repeatCount = .infinity
+        anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        // Sync animation across multiple ShimmerViews
+        anim.beginTime = 1.0
+
+        gradient.add(anim, forKey: "shimmer")
     }
-}
 
-// MARK: - CAAnimationDelegate
-
-extension ShimmerView: CAAnimationDelegate {
-
-    nonisolated public func animationDidStop(_ anim: CAAnimation, finished flag: Bool) {
-        guard flag else { return }
-        MainActor.assumeIsolated {
-            clearMask()
-        }
+    private func stopShimmer() {
+        shimmerLayer?.removeAllAnimations()
+        contentView.layer.mask = nil
+        shimmerLayer = nil
     }
 }
