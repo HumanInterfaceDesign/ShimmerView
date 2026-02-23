@@ -118,4 +118,4 @@ open ShimmerViewExample.xcodeproj
 
 ## License
 
-Public domain (Unlicense). See [LICENSE](LICENSE) for details.
+MIT
