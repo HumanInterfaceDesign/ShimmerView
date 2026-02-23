@@ -8,65 +8,71 @@ Add ShimmerView to your project via Swift Package Manager:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/ShimmerView.git", from: "1.0.0")
+    .package(url: "https://github.com/gtokman/ShimmerView.git", from: "1.0.0")
 ]
 ```
 
 ## Usage
 
-Wrap your content in a `ShimmerView` and set `isShimmering = true` to start the animation.
+Add a label (or any content) to the `contentView`, then set `isShimmering = true`. The shimmer sweeps across as a translucency mask — your text stays fully readable while a highlight glides through it.
 
-### Basic text shimmer
+### Text with Auto Layout
 
 ```swift
 import ShimmerView
 
-let shimmer = ShimmerView(frame: CGRect(x: 0, y: 0, width: 280, height: 24))
+let shimmer = ShimmerView()
+shimmer.translatesAutoresizingMaskIntoConstraints = false
 
 let label = UILabel()
-label.text = "Loading message..."
+label.text = "Thinking..."
 label.textColor = .white
-label.frame = shimmer.bounds
-label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-shimmer.contentView.addSubview(label)
+label.font = .systemFont(ofSize: 16)
+label.numberOfLines = 0
+label.translatesAutoresizingMaskIntoConstraints = false
 
-// Start shimmering
+shimmer.contentView.addSubview(label)
+NSLayoutConstraint.activate([
+    label.topAnchor.constraint(equalTo: shimmer.contentView.topAnchor),
+    label.leadingAnchor.constraint(equalTo: shimmer.contentView.leadingAnchor),
+    label.trailingAnchor.constraint(equalTo: shimmer.contentView.trailingAnchor),
+    label.bottomAnchor.constraint(equalTo: shimmer.contentView.bottomAnchor),
+])
+
+shimmer.isShimmering = true
+```
+
+### Multiline text
+
+```swift
+let shimmer = ShimmerView()
+shimmer.translatesAutoresizingMaskIntoConstraints = false
+
+let label = UILabel()
+label.text = "Loading message content\nThis might take a moment\nPlease wait"
+label.textColor = .white
+label.font = .systemFont(ofSize: 16)
+label.numberOfLines = 0
+label.translatesAutoresizingMaskIntoConstraints = false
+
+shimmer.contentView.addSubview(label)
+NSLayoutConstraint.activate([
+    label.topAnchor.constraint(equalTo: shimmer.contentView.topAnchor),
+    label.leadingAnchor.constraint(equalTo: shimmer.contentView.leadingAnchor),
+    label.trailingAnchor.constraint(equalTo: shimmer.contentView.trailingAnchor),
+    label.bottomAnchor.constraint(equalTo: shimmer.contentView.bottomAnchor),
+])
+
 shimmer.isShimmering = true
 
 // Stop when content loads
 shimmer.isShimmering = false
 ```
 
-### Multiple lines
-
-```swift
-func makeLoadingCell(in container: UIView) {
-    let lines = [
-        CGRect(x: 16, y: 12, width: 240, height: 16),
-        CGRect(x: 16, y: 36, width: 200, height: 16),
-        CGRect(x: 16, y: 60, width: 160, height: 16),
-    ]
-
-    for rect in lines {
-        let shimmer = ShimmerView(frame: rect)
-
-        let placeholder = UIView()
-        placeholder.backgroundColor = .systemGray4
-        placeholder.layer.cornerRadius = 4
-        placeholder.frame = shimmer.bounds
-        placeholder.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        shimmer.contentView.addSubview(placeholder)
-
-        shimmer.isShimmering = true
-        container.addSubview(shimmer)
-    }
-}
-```
-
 ### Custom configuration
 
 ```swift
-let shimmer = ShimmerView(frame: frame)
+let shimmer = ShimmerView()
 
 // Set individual properties
 shimmer.shimmerSpeed = 300
@@ -86,14 +92,24 @@ shimmer.configuration = config
 
 | Property | Default | Description |
 |---|---|---|
-| `speed` | `230` | Speed in points per second |
+| `speed` | `600` | Speed in points per second |
 | `direction` | `.right` | Sweep direction (`.right`, `.left`, `.up`, `.down`) |
-| `highlightLength` | `1.0` | Highlight band as a fraction of content size [0, 1] |
-| `pauseDuration` | `0.4` | Pause between repetitions (seconds) |
-| `animationOpacity` | `0.5` | Opacity of the dimmed region |
+| `highlightLength` | `0.42` | Highlight band as a fraction of content size [0, 1] |
+| `pauseDuration` | `0.49` | Pause between repetitions (seconds) |
+| `animationOpacity` | `0.57` | Opacity of the dimmed region |
 | `baseOpacity` | `1.0` | Opacity of the bright region |
 | `beginFadeDuration` | `0.1` | Fade-in duration when shimmer starts |
 | `endFadeDuration` | `0.3` | Fade-out duration when shimmer stops |
+
+## Example App
+
+The `Example/` directory contains a demo app with interactive sliders for every configuration property. Generate the Xcode project with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+
+```bash
+brew install xcodegen
+xcodegen generate
+open ShimmerViewExample.xcodeproj
+```
 
 ## Requirements
 
