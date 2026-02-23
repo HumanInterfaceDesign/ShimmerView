@@ -124,16 +124,35 @@ public final class ShimmerView: UIView {
 
         let gradient = CAGradientLayer()
 
-        // Colors: dim → bright → dim (highlight sweeps through)
-        let dimColor = UIColor(white: 1, alpha: config.animationOpacity).cgColor
-        let brightColor = UIColor(white: 1, alpha: config.baseOpacity).cgColor
-        gradient.colors = [dimColor, brightColor, dimColor]
+        // Feathered bell-curve highlight: dim edges ease in slowly,
+        // ramp through the middle, then ease back out.
+        let a0 = config.animationOpacity
+        let a1 = config.baseOpacity
+        let range = a1 - a0
 
-        // Locations control highlight band sharpness
+        func c(_ alpha: CGFloat) -> CGColor {
+            UIColor(white: 1, alpha: alpha).cgColor
+        }
+
+        gradient.colors = [
+            c(a0),
+            c(a0 + range * 0.08),
+            c(a0 + range * 0.35),
+            c(a1),
+            c(a0 + range * 0.35),
+            c(a0 + range * 0.08),
+            c(a0),
+        ]
+
         let outside = (1.0 - config.highlightLength) / 2.0
+        let band = config.highlightLength
         gradient.locations = [
             NSNumber(value: Float(outside)),
+            NSNumber(value: Float(outside + band * 0.18)),
+            NSNumber(value: Float(outside + band * 0.35)),
             NSNumber(value: 0.5),
+            NSNumber(value: Float(1.0 - outside - band * 0.35)),
+            NSNumber(value: Float(1.0 - outside - band * 0.18)),
             NSNumber(value: Float(1.0 - outside)),
         ]
 
@@ -180,7 +199,7 @@ public final class ShimmerView: UIView {
         anim.toValue = forward ? travelDistance : -travelDistance
         anim.duration = CFTimeInterval(travelDistance / config.speed) + config.pauseDuration
         anim.repeatCount = .infinity
-        anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        anim.timingFunction = CAMediaTimingFunction(name: .linear)
 
         // Sync animation across multiple ShimmerViews
         anim.beginTime = 1.0

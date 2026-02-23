@@ -7,19 +7,19 @@ public struct ShimmerConfiguration: Sendable, Equatable {
     }
 
     /// Speed in points per second.
-    public var speed: CGFloat = 230.0
+    public var speed: CGFloat = 600.0
 
     /// The direction of the shimmer sweep.
     public var direction: Direction = .right
 
     /// Highlight band length as a fraction of the content size [0, 1].
-    public var highlightLength: CGFloat = 1.0
+    public var highlightLength: CGFloat = 0.42
 
     /// Pause between shimmer repetitions in seconds.
-    public var pauseDuration: CFTimeInterval = 0.4
+    public var pauseDuration: CFTimeInterval = 0.49
 
     /// Opacity of the content in the "dimmed" part of the sweep.
-    public var animationOpacity: CGFloat = 0.5
+    public var animationOpacity: CGFloat = 0.57
 
     /// Opacity of the content in the "bright" part of the sweep.
     public var baseOpacity: CGFloat = 1.0

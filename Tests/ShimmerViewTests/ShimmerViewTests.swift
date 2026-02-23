@@ -7,11 +7,11 @@ import UIKit
 
     @Test func defaultConfiguration() {
         let config = ShimmerConfiguration.default
-        #expect(config.speed == 230.0)
+        #expect(config.speed == 600.0)
         #expect(config.direction == .right)
-        #expect(config.highlightLength == 1.0)
-        #expect(config.pauseDuration == 0.4)
-        #expect(config.animationOpacity == 0.5)
+        #expect(config.highlightLength == 0.42)
+        #expect(config.pauseDuration == 0.49)
+        #expect(config.animationOpacity == 0.57)
         #expect(config.baseOpacity == 1.0)
         #expect(config.beginFadeDuration == 0.1)
         #expect(config.endFadeDuration == 0.3)
